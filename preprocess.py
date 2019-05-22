@@ -15,8 +15,11 @@ class Preprocess():
         if not self.config.imbalanced_target :
             train = pd.concat([show_data.iloc[:show_bound, :].sample(noshow_bound, random_state=seed),
                                noshow_data.iloc[:noshow_bound, :]])
-            test = pd.concat([show_data.iloc[show_bound:, :].sample(noshow_data.shape[0]-noshow_bound, random_state=seed),
-                              noshow_data.iloc[noshow_bound:, :]])
+            if self.config.natural_test :
+                test = pd.concat([show_data.iloc[show_bound:, :], noshow_data.iloc[noshow_bound:, :]])
+            else :
+                test = pd.concat([show_data.iloc[show_bound:, :].sample(noshow_data.shape[0]-noshow_bound, random_state=seed),
+                                  noshow_data.iloc[noshow_bound:, :]])
             train = train.sample(frac=1, random_state=seed).reset_index(drop=True)  # reshuffle data
             test = test.sample(frac=1, random_state=seed).reset_index(drop=True)  # reshuffle data
             return train, test

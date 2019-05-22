@@ -8,8 +8,10 @@ from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, Gradi
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import MultinomialNB, ComplementNB, GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import LinearSVC
 from sklearn.metrics import confusion_matrix,classification_report
-from neural_nets import MLP
+from neural_nets import DNN, MLP
 
 class Train():
     def __init__(self, config):
@@ -154,6 +156,57 @@ class Train():
 
         return model
 
+    def K_nearneighbor(self, train, test):
+        print('STARTING KNN')
+        trainX, trainy = self.split_xy(train)
+        testX, testy = self.split_xy(test)
+
+        model = KNeighborsClassifier(n_neighbors=self.config.neighbors)
+        model.fit(trainX, trainy)
+        train_pred = model.predict(trainX)
+        test_pred = model.predict(testX)
+        cm = confusion_matrix(trainy, train_pred)
+        acc = (cm[0][0]+cm[1][1])/(np.sum(cm))
+        print('------train evaluation------')
+        print(cm)
+        print(classification_report(trainy, train_pred))
+        print('TRAIN ACCURACY : {}\n'.format(np.round(acc,4)))
+        cm = confusion_matrix(testy, test_pred)
+        acc = (cm[0][0]+cm[1][1])/(np.sum(cm))
+        print('\n------test evaluation------')
+        print(cm)
+        print(classification_report(testy, test_pred))
+        print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
+
+        return model
+
+    def svm(self, train, test):
+        print('STARTING SVM')
+        trainX, trainy = self.split_xy(train)
+        testX, testy = self.split_xy(test)
+
+        model = LinearSVC(
+            penalty='l2',
+            C=self.config.C,
+        )
+        model.fit(trainX, trainy)
+        train_pred = model.predict(trainX)
+        test_pred = model.predict(testX)
+        cm = confusion_matrix(trainy, train_pred)
+        acc = (cm[0][0]+cm[1][1])/(np.sum(cm))
+        print('------train evaluation------')
+        print(cm)
+        print(classification_report(trainy, train_pred))
+        print('TRAIN ACCURACY : {}\n'.format(np.round(acc,4)))
+        cm = confusion_matrix(testy, test_pred)
+        acc = (cm[0][0]+cm[1][1])/(np.sum(cm))
+        print('\n------test evaluation------')
+        print(cm)
+        print(classification_report(testy, test_pred))
+        print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
+
+        return model
+
     def boosting(self, train, test, ada=False):
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
@@ -212,8 +265,9 @@ class Train():
 
         return model
 
-    def mlp(self, train, test):
-        print('STARTING MULTI-LAYER PERCEPTRON')
+
+    def neural_net(self, train, test, type):
+        print('STARTING DEEP NEURAL NETWORKS')
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
 
@@ -228,8 +282,10 @@ class Train():
         if self.config.output_activation == 'softmax' :
             trainy = T.Tensor(trainy).view(-1,trainy.shape[0]).squeeze().long()
             testy = T.Tensor(testy).view(-1,testy.shape[0]).squeeze().long()
-
-        model = MLP(self.config)
+        if type == 'dnn' :
+            model = DNN(self.config)
+        elif type == 'mlp' :
+            model = MLP(self.config)
         best_model = None
         losses = []
         test_losses = []
@@ -436,7 +492,7 @@ class Train():
         elif self.config.ensemble_method == 'mlp' :
             ens_model = MLPClassifier(
                 activation='logistic',
-                hidden_layer_sizes=(8),
+                hidden_layer_sizes=(8,4),
                 alpha=0.1,
                 max_iter=300,
             )

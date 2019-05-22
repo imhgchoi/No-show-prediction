@@ -19,8 +19,8 @@ def main():
 
     # basic wrangling with data
     if config.resolve_data :
-        # data.get_weather_loc()
-        # data.create_keys()
+        data.get_weather_loc()
+        data.create_keys()
         data.merge_tables()
 
     # preprocessing
@@ -58,8 +58,10 @@ def main():
                 trainer.boosting(train, test, ada=True)
             elif config.model_type == 'bagging' :
                 trainer.bagging(train, test)
+            elif config.model_type == 'dnn' :
+                trainer.neural_net(train_oh,test_oh, config.model_type)
             elif config.model_type == 'mlp' :
-                trainer.mlp(train_oh,test_oh)
+                trainer.neural_net(train_oh,test_oh, config.model_type)
             elif config.model_type == 'multinomial_nb':
                 if config.imbalanced_target :
                     trainer.complement_nb(train_oh, test_oh)
@@ -67,6 +69,10 @@ def main():
                     trainer.multinomial_nb(train_oh, test_oh)
             elif config.model_type == 'gaussian_nb':
                 trainer.gaussian_nb(train_oh, test_oh)
+            elif config.model_type == 'knn' :
+                trainer.K_nearneighbor(train_oh, test_oh)
+            elif config.model_type == 'svm' :
+                trainer.svm(train_oh, test_oh)
 
         else :
             models = []
@@ -86,8 +92,10 @@ def main():
                 models.append(trainer.boosting(train, test, ada=True))
             if 'bagging' in config.ensemble_models :
                 models.append(trainer.bagging(train, test))
+            if 'dnn' in config.ensemble_models :
+                models_torch.append(trainer.neural_net(train_oh, test_oh, 'dnn'))
             if 'mlp' in config.ensemble_models :
-                models_torch.append(trainer.mlp(train_oh, test_oh))
+                models_torch.append(trainer.neural_net(train_oh, test_oh, 'mlp'))
             if 'multinomial_nb' in config.ensemble_models :
                 if config.imbalanced_target :
                     models_oh.append(trainer.complement_nb(train_oh, test_oh))
@@ -95,6 +103,10 @@ def main():
                     models_oh.append(trainer.multinomial_nb(train_oh, test_oh))
             if 'gaussian_nb' in config.ensemble_models :
                 models_oh.append(trainer.gaussian_nb(train_oh, test_oh))
+            if 'knn' in config.ensemble_models :
+                models_oh.append(trainer.K_nearneighbor(train_oh, test_oh))
+            if 'svm' in config.ensemble_models :
+                models.append(trainer.svm(train_oh, test_oh))
 
             trainer.ensemble(models, models_oh, models_torch, train, test, train_oh, test_oh)
 
