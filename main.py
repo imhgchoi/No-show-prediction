@@ -34,6 +34,7 @@ def main():
     if config.explore :
         print('starting EDA')
         eda.check_target_rto(data)
+        eda.draw_hist(data)
         eda.draw_boxplots(data)
         eda.draw_barplots(data)
 

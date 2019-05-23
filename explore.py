@@ -19,6 +19,18 @@ class Explore():
         plt.savefig('./out/no_sho_rto.png')
         plt.close()
 
+    def draw_hist(self, data):
+        to_draw=['date_lag', 'SMS_received', 'Age', 'season', 'age_bin','Hipertension', 'weekday', 'humidity',
+                 'Scholarship', 'Gender', 'dewpoint']
+        for col in to_draw :
+            if len(data[col].unique()) <= 2 :
+                plt.hist(data[col], bins=2)
+            else :
+                plt.hist(data[col])
+            plt.title('{} histogram'.format(col))
+            plt.savefig('./out/feature_eda/{}_hist.png'.format(col))
+            plt.close()
+
     def draw_boxplots(self, data):
         show_data = data[data['No-show']==0]
         noshow_data = data[data['No-show']==1]
@@ -67,7 +79,6 @@ class Explore():
         bar_wrapper('Handcap', [0,1])
         bar_wrapper('SMS_received', [0,1])
         bar_wrapper('weekday', [0,1,2,3,4,5])
-        bar_wrapper('SMS_received', [0,1])
         bar_wrapper('disease_num', [0,1,2,3,4])
         bar_wrapper('rain', [0,1])
         bar_wrapper('season', [0,1])

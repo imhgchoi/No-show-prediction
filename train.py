@@ -25,19 +25,23 @@ class Train():
         y = data['No-show']
         return np.asarray(X), np.asarray(y)
 
-    def plot_featimpt(self, model):
-        fi_dict = {}
+    def plot_featimpt(self, model,type):
+        fi_list = []
         for f, imp in zip(self.features, model.feature_importances_):
-            fi_dict[f] = imp
+            fi_list.append([imp, f])
+        fi_list = sorted(fi_list)
+        fi_list.reverse()
+        fi_arr = np.asarray(fi_list)
 
         fig, ax = plt.subplots(figsize=(15,10))
-        ax.barh(range(len(fi_dict)), list(fi_dict.values()), align='center', color='lightgreen')
-        ax.set_yticks(range(len(fi_dict)))
-        ax.set_yticklabels(list(fi_dict.keys()))
+        xl = [np.round(float(x), 4) for x in list(fi_arr[:,0])]
+        ax.barh(range(len(fi_list)), xl, align='center', color='lightgreen')
+        ax.set_yticks(range(len(fi_list)))
+        ax.set_yticklabels(list(fi_arr[:,1]))
         ax.invert_yaxis()  # labels read top-to-bottom
         ax.set_xlabel('Feature Importance')
         ax.set_title('Tree Feature Importances')
-        plt.savefig('./out/feature_impt.png')
+        plt.savefig('./out/{}_feature_impt.png'.format(type))
         plt.close()
 
     def decision_tree(self, train, test):
@@ -65,7 +69,7 @@ class Train():
         print(classification_report(testy, test_pred))
         print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
 
-        self.plot_featimpt(model)
+        self.plot_featimpt(model,'dt')
 
         return model
 
@@ -95,7 +99,7 @@ class Train():
         print(classification_report(testy, test_pred))
         print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
 
-        self.plot_featimpt(model)
+        self.plot_featimpt(model,'rf')
 
         return model
 
@@ -125,7 +129,7 @@ class Train():
         print(classification_report(testy, test_pred))
         print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
 
-        self.plot_featimpt(model)
+        self.plot_featimpt(model,'et')
 
         return model
 
@@ -134,9 +138,14 @@ class Train():
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
 
+        scaler = MinMaxScaler()
+        scaler.fit(trainX)
+        trainX = scaler.transform(trainX)
+        testX = scaler.transform(testX)
+
         model = LogisticRegression(
-            penalty='l2',
-            max_iter=200
+            penalty='l1',
+            max_iter=1000
         )
         model.fit(trainX, trainy)
         train_pred = model.predict(trainX)
@@ -185,6 +194,11 @@ class Train():
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
 
+        scaler = MinMaxScaler()
+        scaler.fit(trainX)
+        trainX = scaler.transform(trainX)
+        testX = scaler.transform(testX)
+
         model = LinearSVC(
             penalty='l2',
             C=self.config.C,
@@ -217,7 +231,7 @@ class Train():
             print('STARTING GRADIENT BOOSTING')
             loss = 'deviance'
         model = GradientBoostingClassifier(
-            n_estimators=200,
+            n_estimators=500, # optimal : gb - 500 / ab - 500
             loss = loss
         )
         model.fit(trainX, trainy)
@@ -243,7 +257,7 @@ class Train():
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
         model = BaggingClassifier(
-            n_estimators=50,
+            n_estimators=150,
             bootstrap=True,
             bootstrap_features=True
         )
@@ -267,7 +281,10 @@ class Train():
 
 
     def neural_net(self, train, test, type):
-        print('STARTING DEEP NEURAL NETWORKS')
+        if type =='dnn' :
+            print('STARTING DEEP NEURAL NETWORKS')
+        elif type == 'mlp' :
+            print('STARTING MLP')
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
 
@@ -293,16 +310,22 @@ class Train():
         for e in range(self.config.max_epoch):
             model.optimizer.zero_grad()
             train_pred = model(trainX)
-            test_pred = model(testX)
             loss = model.loss(train_pred, trainy)
-            test_loss = model.loss(test_pred, testy)
-            losses.append(loss.item())
-            test_losses.append(test_loss.item())
-            agg_losses.append(loss.item() + test_loss.item())
-            if e%10 == 0 :
-                print('epoch', str(e + 1), ' - train loss : ', str(loss.item()), ' / - test loss : ', str(test_loss.item()))
             loss.backward()
             model.optimizer.step()
+
+            # test model
+            model.eval()
+            train_pred = model(trainX)
+            train_loss = model.loss(train_pred, trainy)
+            test_pred = model(testX)
+            test_loss = model.loss(test_pred, testy)
+            losses.append(train_loss.item())
+            test_losses.append(test_loss.item())
+            agg_losses.append(train_loss.item() + test_loss.item())
+
+            if e%10 == 0 :
+                print('epoch', str(e + 1), ' - train loss : ', str(train_loss.item()), ' / - test loss : ', str(test_loss.item()))
 
             # save best model
             if min(test_losses) >= test_loss.item() :
@@ -310,9 +333,27 @@ class Train():
                 best_epoch = e+1
 
             # early stop
-            if e > 30 :
-                if np.std(losses[-10:]) < self.config.early_stop_std :
-                    break
+            if self.config.disable_early_stop :
+                pass
+            else:
+                if e > 30 :
+                    if np.std(losses[-10:]) < self.config.early_stop_std :
+                        break
+
+            # save plot
+            if e%100 == 0 :
+                plt.plot(losses)
+                plt.plot(test_losses)
+                plt.title('Neural Network Cost Plot')
+                plt.xlabel('epochs')
+                plt.ylabel('loss')
+                plt.legend(['train', 'test'])
+                if type == 'dnn' :
+                    plt.savefig('./out/dnn_train.png')
+                else :
+                    plt.savefig('./out/mlp_train.png')
+                plt.close()
+
         print('\nThe best epoch was epoch {}\n'.format(str(best_epoch)))
         if self.config.output_activation == 'softmax' :
             train_pred = np.round(np.max(best_model(trainX).detach().numpy(),axis=1).flatten())
@@ -333,14 +374,7 @@ class Train():
         print(classification_report(testy, test_pred))
         print('TEST ACCURACY : {}\n\n'.format(np.round(acc,4)))
 
-        plt.plot(losses)
-        plt.plot(test_losses)
-        plt.title('Neural Network Cost Plot')
-        plt.xlabel('epochs')
-        plt.ylabel('loss')
-        plt.legend(['train', 'test'])
-        plt.savefig('./out/nn_train.png')
-        plt.close()
+
 
         return best_model
 
@@ -348,11 +382,6 @@ class Train():
         print('STARTING MULTINOMIAL NAIVE BAYES')
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
-
-        scaler = MinMaxScaler()
-        scaler.fit(trainX)
-        trainX = scaler.transform(trainX)
-        testX = scaler.transform(testX)
 
         model = MultinomialNB()
         model.fit(trainX, trainy)
@@ -378,11 +407,6 @@ class Train():
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
 
-        scaler = MinMaxScaler()
-        scaler.fit(trainX)
-        trainX = scaler.transform(trainX)
-        testX = scaler.transform(testX)
-
         model = ComplementNB()
         model.fit(trainX, trainy)
         train_pred = model.predict(trainX)
@@ -406,11 +430,6 @@ class Train():
         print('STARTING GAUSSIAN NAIVE BAYES')
         trainX, trainy = self.split_xy(train)
         testX, testy = self.split_xy(test)
-
-        scaler = MinMaxScaler()
-        scaler.fit(trainX)
-        trainX = scaler.transform(trainX)
-        testX = scaler.transform(testX)
 
         model = GaussianNB()
         model.fit(trainX, trainy)

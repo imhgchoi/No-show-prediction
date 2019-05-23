@@ -83,7 +83,7 @@ class DataDownloader():
         month = []
         season = []  # 0 : spring / 1 : summer / 2 : fall / 3 : winter
         day = []
-        age_bin = []  # 0 : 0-10  /  1 : 11-29  /  2 : 30-64  /  3 : 65-
+        age_bin = []  # 0 : 0-10  /  1 : 11-26  /  2 : 27-64  /  3 : 65-
         rain = []
         solar = []
         temp = []
@@ -166,4 +166,29 @@ class DataDownloader():
         final.to_csv('./data/final.csv',index=False)
 
     def load_data(self):
-        return pd.read_csv('./data/final_prepro.csv'), pd.read_csv('./data/final_prepro_onehot.csv')
+        def prepro(data) :
+            # get rid of Age 0 and negative date_lag
+            data = data[data['Age'] != 0]
+            data = data[data['date_lag'] >= 0]
+            # normalize date_lag
+            dl = np.log(np.array(data['date_lag'])+1)
+            data['date_lag'] = dl
+            return data
+
+        if self.config.impt_only :
+            data = pd.read_csv('./data/final_prepro.csv',
+                               usecols=['SMS_received','date_lag','season','Age','age_bin','Scholarship','dewpoint',
+                                        'humidity','Alcoholism','temp','Hipertension','weekday','No-show'])
+            data_oh = pd.read_csv('./data/final_prepro_onehot.csv',
+                                   usecols=['SMS_received','date_lag','season','Age','kid','youth','adult','senior',
+                                            'Scholarship','dewpoint','humidity','Alcoholism','temp','Hipertension','mon',
+                                            'tue','wed','thu','fri','sat','No-show'])
+            data = prepro(data)
+            data_oh = prepro(data_oh)
+            return data, data_oh
+        else :
+            data = pd.read_csv('./data/final_prepro.csv')
+            data_oh = pd.read_csv('./data/final_prepro_onehot.csv')
+            data = prepro(data)
+            data_oh = prepro(data_oh)
+            return data, data_oh

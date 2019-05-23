@@ -9,13 +9,17 @@ class MLP(nn.Module):
     def __init__(self, config):
         super(MLP, self).__init__()
         self.config = config
+        if config.impt_only :
+            self.input_dim = 20
+        else :
+            self.input_dim = 26
 
         def init_weights(m):
             if type(m) == nn.Linear:
                 T.nn.init.xavier_uniform_(m.weight)
                 m.bias.data.fill_(0.01)
 
-        self.hidden = nn.Sequential(nn.Linear(26, 50, bias=True))
+        self.hidden = nn.Sequential(nn.Linear(self.input_dim, 50, bias=True))
         self.hidden.apply(init_weights)
         if self.config.output_activation == 'sigmoid' :
             self.out = nn.Linear(50, 1)
@@ -26,7 +30,7 @@ class MLP(nn.Module):
             self.out.apply(init_weights)
             self.loss = nn.CrossEntropyLoss()
 
-        self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr)
+        self.optimizer = optim.SGD(self.parameters(), lr=self.config.lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -43,19 +47,23 @@ class DNN(nn.Module):
     def __init__(self, config):
         super(DNN, self).__init__()
         self.config = config
+        if config.impt_only :
+            self.input_dim = 20
+        else :
+            self.input_dim = 26
 
         def init_weights(m):
             if type(m) == nn.Linear:
                 T.nn.init.xavier_uniform_(m.weight)
                 m.bias.data.fill_(0.01)
 
-        self.layer1 = nn.Sequential(nn.Linear(26, 48, bias=True), nn.Dropout(0.2))
+        self.layer1 = nn.Sequential(nn.Linear(self.input_dim, 100, bias=True), nn.Dropout(0.1))
         self.layer1.apply(init_weights)
-        self.bn1 = nn.BatchNorm1d(48)
-        self.layer2 = nn.Sequential(nn.Linear(48, 24, bias=True), nn.Dropout(0.2))
+        self.bn1 = nn.BatchNorm1d(100)
+        self.layer2 = nn.Sequential(nn.Linear(100, 50, bias=True), nn.Dropout(0.1))
         self.layer2.apply(init_weights)
-        self.bn2 = nn.BatchNorm1d(24)
-        self.layer3 = nn.Sequential(nn.Linear(24, 10, bias=True), nn.Dropout(0.2))
+        self.bn2 = nn.BatchNorm1d(50)
+        self.layer3 = nn.Sequential(nn.Linear(50, 10, bias=True), nn.Dropout(0.1))
         self.layer3.apply(init_weights)
         self.bn3 = nn.BatchNorm1d(10)
         if self.config.output_activation == 'sigmoid' :
@@ -67,7 +75,7 @@ class DNN(nn.Module):
             self.out.apply(init_weights)
             self.loss = nn.CrossEntropyLoss()
 
-        self.optimizer = optim.Adam(self.parameters(), lr=self.config.lr)
+        self.optimizer = optim.SGD(self.parameters(), lr=self.config.lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
