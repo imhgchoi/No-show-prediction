@@ -37,7 +37,7 @@ def get_args():
     argp.add_argument('--max_epoch', type=int, default=500) # optimal : mlp - 3000 /
     argp.add_argument('--output_activation', type=str, default='sigmoid', choices=['sigmoid','softmax'])
     argp.add_argument('--disable_early_stop', action='store_true', default=False)
-    argp.add_argument('--early_stop_std', type=float, default=0.00001) # optimal : mlp - 0.000001 / dnn -
+    argp.add_argument('--early_stop_std', type=float, default=0.000001) # optimal : mlp - 0.000001 / dnn -
 
     # KNN hyperparameter
     argp.add_argument('--neighbors', type=int, default=19) # optimal : 19

@@ -324,7 +324,7 @@ class Train():
             test_losses.append(test_loss.item())
             agg_losses.append(train_loss.item() + test_loss.item())
 
-            if e%10 == 0 :
+            if e%500 == 0 :
                 print('epoch', str(e + 1), ' - train loss : ', str(train_loss.item()), ' / - test loss : ', str(test_loss.item()))
 
             # save best model
